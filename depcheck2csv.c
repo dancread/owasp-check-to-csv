@@ -8,7 +8,7 @@ void parseProject(xmlDocPtr, xmlNodePtr);
 void parseDependencies(xmlDocPtr, xmlNodePtr);
 void parseVulnerabilities(xmlDocPtr, xmlNodePtr);
 void parseVulnerability(xmlDocPtr, xmlNodePtr);
-void parseSeverity(xmlDocPtr, xmlNodePtr);
+void parseSeverityAndName(xmlDocPtr, xmlNodePtr);
 void parseFileName(xmlDocPtr, xmlNodePtr);
 /* CSV entries:
   project name
@@ -19,17 +19,16 @@ void parseFileName(xmlDocPtr, xmlNodePtr);
 */
 struct project_entry {
   xmlChar *project_name;
-  xmlChar *report_date;
   xmlChar *dependency_name;
-  xmlChar *vulnerability;
+  xmlChar *vuln_name;
+  xmlChar *report_date;
   xmlChar *severity;
-};
-int main(){
-  struct project_entry;
-  xmlDocPtr    xml_doc = xmlParseFile("dependency-check-report.xml");
+} project_entry;
+int main(int argc, char** argv){
+  xmlDocPtr    xml_doc = xmlParseFile(argv[1]);
   xmlNodePtr   xml_cur_node = xmlDocGetRootElement(xml_doc);
   //LIBXML_TEST_VERSION;
-  printf("%s\n", xml_cur_node->children->content);
+  //printf("%s\n", xml_cur_node->children->content);
   xml_cur_node = xml_cur_node->xmlChildrenNode;
   while (xml_cur_node != NULL) {
       // Get project info
@@ -51,9 +50,9 @@ void parseProject(xmlDocPtr xml_doc, xmlNodePtr xml_ptr){
     // Get project name
     while (xml_ptr != NULL) {
 	    if ((!xmlStrcmp(xml_ptr->name, (const xmlChar *)"name"))) {
-        project_name = xmlNodeListGetString(xml_doc, xml_ptr->xmlChildrenNode, 1);
-        printf("project name: %s\n", project_name);
-        xmlFree(project_name);
+        project_entry.project_name = xmlNodeListGetString(xml_doc, xml_ptr->xmlChildrenNode, 1);
+        //printf("project name: %s\n", project_name);
+        //xmlFree(project_name);
       }
       xml_ptr = xml_ptr->next;
     }
@@ -77,9 +76,9 @@ void parseFileName(xmlDocPtr xml_doc, xmlNodePtr xml_ptr){
     while (xml_ptr != NULL) {
       //printf("%s\n", xml_ptr->name);
 	    if ((!xmlStrcmp(xml_ptr->name, (const xmlChar *)"fileName"))) {
-        file_name = xmlNodeListGetString(xml_doc, xml_ptr->xmlChildrenNode, 1);
-		    printf("%s\n", file_name);
-		    xmlFree(file_name);
+        project_entry.dependency_name = xmlNodeListGetString(xml_doc, xml_ptr->xmlChildrenNode, 1);
+		    //printf("%s\n", file_name);
+		    //xmlFree(file_name);
       }
       xml_ptr = xml_ptr->next;
     }
@@ -102,13 +101,13 @@ void parseVulnerability(xmlDocPtr xml_doc, xmlNodePtr xml_ptr){
     while (xml_ptr != NULL) {
       //printf("%s\n", xml_ptr->name);
 	    if ((!xmlStrcmp(xml_ptr->name, (const xmlChar *)"vulnerability"))) {
-        parseSeverity(xml_doc, xml_ptr);
+        parseSeverityAndName(xml_doc, xml_ptr);
       }
       xml_ptr = xml_ptr->next;
     }
 
 }
-void parseSeverity(xmlDocPtr xml_doc, xmlNodePtr xml_ptr){
+void parseSeverityAndName(xmlDocPtr xml_doc, xmlNodePtr xml_ptr){
     xmlChar *severity;
     xmlChar *name;
     xml_ptr = xml_ptr->xmlChildrenNode;
@@ -116,16 +115,18 @@ void parseSeverity(xmlDocPtr xml_doc, xmlNodePtr xml_ptr){
     while (xml_ptr != NULL) {
       //printf("%s\n", xml_ptr->name);
 	    if ((!xmlStrcmp(xml_ptr->name, (const xmlChar *)"severity"))) {
-        severity = xmlNodeListGetString(xml_doc, xml_ptr->xmlChildrenNode, 1);
-		    printf("\t%s\n", severity);
-		    xmlFree(severity);
+        project_entry.severity = xmlNodeListGetString(xml_doc, xml_ptr->xmlChildrenNode, 1);
+		    //printf("\t%s", severity);
+		    //xmlFree(severity);
       }
-	    if ((!xmlStrcmp(xml_ptr->name, (const xmlChar *)"name"))) {
-        name = xmlNodeListGetString(xml_doc, xml_ptr->xmlChildrenNode, 1);
-		    printf("\t%s\n", name);
-		    xmlFree(name);
+      else if ((!xmlStrcmp(xml_ptr->name, (const xmlChar *)"name"))) {
+        project_entry.vuln_name = xmlNodeListGetString(xml_doc, xml_ptr->xmlChildrenNode, 1);
+		    //printf("\t%s", name);
+		    //xmlFree(name);
       }
       xml_ptr = xml_ptr->next;
     }
+    printf("%s,%s,%s,%s\n", project_entry.project_name, project_entry.dependency_name, project_entry.vuln_name, project_entry.severity);
+    //printf("\n");
 
 }
