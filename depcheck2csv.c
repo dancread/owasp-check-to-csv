@@ -1,3 +1,5 @@
+#include <windows.h>
+#include <shlwapi.h>
 #include <stdio.h>
 #include <libxml/xmlreader.h>
 //#include <libxml/xmlversion.h>
@@ -10,6 +12,7 @@ void parseVulnerabilities(xmlDocPtr, xmlNodePtr);
 void parseVulnerability(xmlDocPtr, xmlNodePtr);
 void parseSeverityAndName(xmlDocPtr, xmlNodePtr);
 void parseFileName(xmlDocPtr, xmlNodePtr);
+void SearchRecursively(LPCTSTR lpFolder, LPCTSTR lpFilePattern);
 /* CSV entries:
   project name
   report date
@@ -25,7 +28,11 @@ struct project_entry {
   xmlChar *severity;
 } project_entry;
 int main(int argc, char** argv){
-  xmlDocPtr    xml_doc = xmlParseFile(argv[1]);
+  char szCWD[MAX_PATH];
+  GetCurrentDirectory(MAX_PATH,szCWD);
+  // Find all files with that name
+  SearchRecursively(szCWD,"dependency-check-report.xml");
+  xmlDocPtr    xml_doc = xmlParseFile("dependency-check-report.xml" );
   xmlNodePtr   xml_cur_node = xmlDocGetRootElement(xml_doc);
   //LIBXML_TEST_VERSION;
   //printf("%s\n", xml_cur_node->children->content);
@@ -59,8 +66,8 @@ void parseProject(xmlDocPtr xml_doc, xmlNodePtr xml_ptr){
 }
 void parseDependencies(xmlDocPtr xml_doc, xmlNodePtr xml_ptr){
     xml_ptr = xml_ptr->xmlChildrenNode;
-    
-    // Get dependencies 
+
+    // Get dependencies
     while (xml_ptr != NULL) {
 	    if ((!xmlStrcmp(xml_ptr->name, (const xmlChar *)"dependency"))) {
         parseFileName(xml_doc, xml_ptr);
@@ -129,4 +136,46 @@ void parseSeverityAndName(xmlDocPtr xml_doc, xmlNodePtr xml_ptr){
     printf("%s,%s,%s,%s\n", project_entry.project_name, project_entry.dependency_name, project_entry.vuln_name, project_entry.severity);
     //printf("\n");
 
+}
+void SearchRecursively(LPCTSTR lpFolder, LPCTSTR lpFilePattern)
+{
+    TCHAR szFullPattern[MAX_PATH];
+    WIN32_FIND_DATA FindFileData;
+    HANDLE hFindFile;
+    // first we are going to process any subdirectories
+    PathCombine(szFullPattern, lpFolder, "*");
+    hFindFile = FindFirstFile(szFullPattern, &FindFileData);
+    if(hFindFile != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+          if(strcmp(FindFileData.cFileName,".") && strcmp(FindFileData.cFileName,"..")){
+            if(FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
+            {
+                // found a subdirectory; recurse into it
+                //printf("%s\n", FindFileData.cFileName);
+                PathCombine(szFullPattern, lpFolder, FindFileData.cFileName);
+                SearchRecursively(szFullPattern, lpFilePattern);
+            }
+          }
+        } while(FindNextFile(hFindFile, &FindFileData));
+        FindClose(hFindFile);
+    }
+
+    // Now we are going to look for the matching files
+    PathCombine(szFullPattern, lpFolder, lpFilePattern);
+    hFindFile = FindFirstFile(szFullPattern, &FindFileData);
+    if(hFindFile != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            if(!(FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            {
+                // found a file; do something with it
+                PathCombine(szFullPattern, lpFolder, FindFileData.cFileName);
+                //printf("%s\n", szFullPattern);
+            }
+        } while(FindNextFile(hFindFile, &FindFileData));
+        FindClose(hFindFile);
+    }
 }
