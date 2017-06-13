@@ -32,23 +32,6 @@ int main(int argc, char** argv){
   GetCurrentDirectory(MAX_PATH,szCWD);
   // Find all files with that name
   SearchRecursively(szCWD,"dependency-check-report.xml");
-  xmlDocPtr    xml_doc = xmlParseFile("dependency-check-report.xml" );
-  xmlNodePtr   xml_cur_node = xmlDocGetRootElement(xml_doc);
-  //LIBXML_TEST_VERSION;
-  //printf("%s\n", xml_cur_node->children->content);
-  xml_cur_node = xml_cur_node->xmlChildrenNode;
-  while (xml_cur_node != NULL) {
-      // Get project info
-      if ((!xmlStrcmp(xml_cur_node->name, (const xmlChar *)"projectInfo"))){
-        parseProject(xml_doc, xml_cur_node);
-      }
-      // Get dependencies with vulnerabilities
-      if ((!xmlStrcmp(xml_cur_node->name, (const xmlChar *)"dependencies"))){
-        parseDependencies(xml_doc, xml_cur_node);
-      }
-      xml_cur_node = xml_cur_node->next;
-  }
-  xmlFreeDoc(xml_doc);
   return 0;
 }
 void parseProject(xmlDocPtr xml_doc, xmlNodePtr xml_ptr){
@@ -172,8 +155,23 @@ void SearchRecursively(LPCTSTR lpFolder, LPCTSTR lpFilePattern)
             if(!(FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
             {
                 // found a file; do something with it
-                PathCombine(szFullPattern, lpFolder, FindFileData.cFileName);
-                //printf("%s\n", szFullPattern);
+              PathCombine(szFullPattern, lpFolder, FindFileData.cFileName);
+              xmlDocPtr    xml_doc = xmlParseFile(szFullPattern);
+              xmlNodePtr   xml_cur_node = xmlDocGetRootElement(xml_doc);
+              xml_cur_node = xmlDocGetRootElement(xml_doc);
+              xml_cur_node = xml_cur_node->xmlChildrenNode;
+              while (xml_cur_node != NULL) {
+                  // Get project info
+                  if ((!xmlStrcmp(xml_cur_node->name, (const xmlChar *)"projectInfo"))){
+                    parseProject(xml_doc, xml_cur_node);
+                  }
+                  // Get dependencies with vulnerabilities
+                  if ((!xmlStrcmp(xml_cur_node->name, (const xmlChar *)"dependencies"))){
+                    parseDependencies(xml_doc, xml_cur_node);
+                  }
+                  xml_cur_node = xml_cur_node->next;
+              }
+              xmlFreeDoc(xml_doc);
             }
         } while(FindNextFile(hFindFile, &FindFileData));
         FindClose(hFindFile);
